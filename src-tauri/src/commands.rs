@@ -5,7 +5,7 @@ use crate::environment;
 use crate::recorder::Recorder;
 use crate::AppState;
 
-fn clone_state(state: &AppState) -> AppState {
+pub fn clone_state(state: &AppState) -> AppState {
     AppState {
         config: state.config.clone(),
         recorder: state.recorder.clone(),
@@ -13,6 +13,7 @@ fn clone_state(state: &AppState) -> AppState {
         is_processing: state.is_processing.clone(),
         whisper: state.whisper.clone(),
         hotkey_status: state.hotkey_status.clone(),
+        evdev_hotkey: state.evdev_hotkey.clone(),
     }
 }
 
@@ -24,6 +25,8 @@ pub fn get_config(state: State<'_, AppState>) -> Config {
 #[tauri::command]
 pub fn save_config(state: State<'_, AppState>, config: Config) -> Result<(), String> {
     config.save();
+    // Propagate hotkey change to evdev keywatcher (it reads the hotkey from AppState.evdev_hotkey)
+    *state.evdev_hotkey.lock() = config.hotkey.clone();
     *state.config.lock() = config;
     Ok(())
 }
@@ -227,7 +230,7 @@ pub fn toggle_recording(app: AppHandle, state: State<'_, AppState>) -> Result<()
 }
 
 /// Internal version that takes owned Arc<Mutex<>> instead of State
-async fn start_recording_inner(app: AppHandle, st: AppState) -> Result<String, String> {
+pub async fn start_recording_inner(app: AppHandle, st: AppState) -> Result<String, String> {
     let mut rec_lock = st.recorder.lock();
     if rec_lock.is_some() {
         log::warn!("start_recording: already recording");
@@ -257,7 +260,7 @@ async fn start_recording_inner(app: AppHandle, st: AppState) -> Result<String, S
     Ok(String::new())
 }
 
-async fn stop_recording_inner(app: AppHandle, st: AppState) -> Result<String, String> {
+pub async fn stop_recording_inner(app: AppHandle, st: AppState) -> Result<String, String> {
     let (audio, config) = {
         let mut rec_lock = st.recorder.lock();
         let recorder = match rec_lock.as_mut() {

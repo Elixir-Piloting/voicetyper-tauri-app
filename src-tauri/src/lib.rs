@@ -6,6 +6,7 @@ pub mod transcribe;
 pub mod cleanup;
 pub mod commands;
 pub mod model;
+pub mod keywatcher;
 
 use std::sync::Arc;
 use parking_lot::Mutex;
@@ -21,6 +22,7 @@ pub struct AppState {
     pub is_processing: Arc<Mutex<bool>>,
     pub whisper: Arc<Mutex<Option<WhisperHandle>>>,
     pub hotkey_status: Arc<Mutex<String>>,
+    pub evdev_hotkey: Arc<Mutex<String>>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -33,7 +35,8 @@ pub fn run() {
         is_recording: Arc::new(Mutex::new(false)),
         is_processing: Arc::new(Mutex::new(false)),
         whisper: Arc::new(Mutex::new(None)),
-        hotkey_status: Arc::new(Mutex::new("waiting".to_string())),
+        hotkey_status: Arc::new(Mutex::new("detecting".to_string())),
+        evdev_hotkey: Arc::new(Mutex::new("ctrl+super".to_string())),
     };
 
     tauri::Builder::default()
@@ -42,8 +45,21 @@ pub fn run() {
         .manage(app_state)
         .setup(|app| {
             let handle = app.handle();
+
+            let st: tauri::State<'_, AppState> = app.state();
+            let hotkey_str = st.config.lock().hotkey.clone();
+            *st.evdev_hotkey.lock() = hotkey_str;
+            drop(st);
+
             commands::setup_hotkey(handle)?;
             commands::setup_tray(handle)?;
+
+            let app_clone = handle.clone();
+            let st: tauri::State<'_, AppState> = app.state();
+            let hk = st.evdev_hotkey.clone();
+            drop(st);
+            keywatcher::spawn_keywatcher(app_clone, hk);
+
             let st: tauri::State<'_, AppState> = app.state();
             let available = model::get_available_models();
             if let Some(model_name) = available.first() {
