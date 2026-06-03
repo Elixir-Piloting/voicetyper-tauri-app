@@ -334,6 +334,23 @@ listen('recording-status', (event) => {
   }
 });
 
+listen('hotkey-status', (event) => {
+  const data = event.payload;
+  const el = document.getElementById('hk-status');
+  if (!el) return;
+  const status = data.status;
+  if (status === 'registered') {
+    el.innerHTML = '<span class="hk-ok">✓ Registered (' + data.hotkey + ')</span>';
+  } else if (status === 'failed') {
+    el.innerHTML = '<span class="hk-fail">✗ Registration failed — check terminal logs</span>';
+  } else {
+    el.textContent = 'unknown';
+  }
+  // Also update the hotkey recorder display
+  const rec = document.getElementById('hk-dictation');
+  if (rec && data.hotkey) rec.textContent = data.hotkey;
+});
+
 async function toggleRecord() {
   try {
     await invoke('toggle_recording');

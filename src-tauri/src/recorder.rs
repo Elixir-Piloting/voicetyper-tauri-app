@@ -2,6 +2,8 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
+const TARGET_RATE: u32 = 16000;
+
 #[allow(dead_code)]
 /// Wrapper to make cpal::Stream Send + Sync.
 /// cpal::Stream is !Send on some platforms (ALSA), but in practice
@@ -11,8 +13,7 @@ unsafe impl Send for SendStream {}
 unsafe impl Sync for SendStream {}
 
 pub struct Recorder {
-    #[allow(dead_code)]
-    sample_rate: u32,
+    device_rate: u32,
     stream: SendStream,
     buffer: Arc<Mutex<Vec<f32>>>,
     recording: Arc<Mutex<bool>>,
@@ -20,9 +21,9 @@ pub struct Recorder {
 }
 
 impl Recorder {
-    pub fn new(sample_rate: u32) -> Self {
+    pub fn new() -> Self {
         Self {
-            sample_rate,
+            device_rate: 0,
             stream: SendStream(None),
             buffer: Arc::new(Mutex::new(Vec::new())),
             recording: Arc::new(Mutex::new(false)),
@@ -39,6 +40,10 @@ impl Recorder {
         let config = device
             .default_input_config()
             .map_err(|e| format!("input config: {}", e))?;
+
+        let device_rate = config.sample_rate().0;
+        log::info!("audio device: {} ({} Hz)", device.name().unwrap_or_default(), device_rate);
+        self.device_rate = device_rate;
 
         let buffer = self.buffer.clone();
         let recording = self.recording.clone();
@@ -85,7 +90,6 @@ impl Recorder {
 
     pub fn stop(&mut self) -> Option<Vec<f32>> {
         *self.recording.lock() = false;
-        // Drop stream on the calling thread
         self.stream = SendStream(None);
         let audio = {
             let mut buf = self.buffer.lock();
@@ -96,7 +100,16 @@ impl Recorder {
             }
         };
         *self.amplitudes.lock() = Vec::new();
-        audio
+
+        // Resample to TARGET_RATE if device rate differs
+        audio.map(|samples: Vec<f32>| {
+            if self.device_rate != 0 && self.device_rate != TARGET_RATE {
+                log::info!("resampling from {} Hz to {} Hz ({} samples)", self.device_rate, TARGET_RATE, samples.len());
+                resample(&samples, self.device_rate, TARGET_RATE)
+            } else {
+                samples
+            }
+        })
     }
 
     pub fn is_recording(&self) -> bool {
@@ -106,6 +119,28 @@ impl Recorder {
     pub fn get_amplitudes(&self) -> Vec<f32> {
         self.amplitudes.lock().clone()
     }
+}
+
+/// Linear interpolation resampling
+fn resample(input: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
+    let ratio = from_rate as f64 / to_rate as f64;
+    let out_len = (input.len() as f64 / ratio).ceil() as usize;
+    let mut output = Vec::with_capacity(out_len);
+
+    for i in 0..out_len {
+        let src_pos = i as f64 * ratio;
+        let src_idx = src_pos as usize;
+        let frac = src_pos - src_idx as f64;
+
+        if src_idx + 1 < input.len() {
+            let a = input[src_idx] as f64;
+            let b = input[src_idx + 1] as f64;
+            output.push((a + (b - a) * frac) as f32);
+        } else if src_idx < input.len() {
+            output.push(input[src_idx]);
+        }
+    }
+    output
 }
 
 /// Encode f32 audio samples to WAV bytes for API submission

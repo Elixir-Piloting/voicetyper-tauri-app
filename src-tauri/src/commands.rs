@@ -66,7 +66,7 @@ pub async fn start_recording(app: AppHandle, state: State<'_, AppState>) -> Resu
         return Err("already recording".to_string());
     }
 
-    let mut recorder = Recorder::new(16000);
+    let mut recorder = Recorder::new();
     recorder.start()?;
 
     *state.is_recording.lock() = true;
@@ -223,7 +223,7 @@ async fn start_recording_inner(app: AppHandle, st: AppState) -> Result<String, S
         return Err("already recording".to_string());
     }
 
-    let mut recorder = Recorder::new(16000);
+    let mut recorder = Recorder::new();
     recorder.start().map_err(|e| {
         log::error!("recorder.start failed: {}", e);
         e
@@ -390,7 +390,7 @@ pub fn setup_hotkey(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
     let shortcut = Shortcut::new(Some(modifiers), code);
 
-    match app.global_shortcut().on_shortcut(shortcut, move |a, _shortcut, event| {
+    let hotkey_status = match app.global_shortcut().on_shortcut(shortcut, move |a, _shortcut, event| {
         if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
             let app2 = a.clone();
             tauri::async_runtime::spawn(async move {
@@ -407,9 +407,22 @@ pub fn setup_hotkey(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
             });
         }
     }) {
-        Ok(_) => log::info!("hotkey registered: {} (mods={:?}, code={:?})", hotkey_str, modifiers, code),
-        Err(e) => log::error!("hotkey registration failed: {}", e),
-    }
+        Ok(_) => {
+            log::info!("hotkey registered: {} (mods={:?}, code={:?})", hotkey_str, modifiers, code);
+            "registered"
+        }
+        Err(e) => {
+            log::error!("hotkey registration failed: {}", e);
+            "failed"
+        }
+    };
+
+    let _ = app.emit("hotkey-status", serde_json::json!({
+        "hotkey": hotkey_str,
+        "status": hotkey_status,
+        "modifiers": format!("{:?}", modifiers),
+        "code": format!("{:?}", code),
+    }));
 
     Ok(())
 }
