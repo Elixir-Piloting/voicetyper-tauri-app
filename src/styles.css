@@ -536,6 +536,26 @@ h2 {
 .hotkey-debug { border-bottom: none; }
 .hotkey-debug label { min-width: 100px; }
 
-#hk-status { font-size: 12px; }
+.hk-live-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#hk-live {
+  font-size: 20px;
+  font-weight: 800;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--text3);
+  min-width: 30px;
+  text-align: center;
+  transition: color 0.1s;
+}
+
+#hk-live.flash {
+  color: var(--accent);
+}
+
+#hk-status { font-size: 12px; color: var(--text3); }
 .hk-ok { color: #4caf50; }
 .hk-fail { color: var(--accent); }

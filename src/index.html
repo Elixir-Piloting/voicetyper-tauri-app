@@ -59,8 +59,11 @@
           <div class="hotkey-recorder" id="hk-dictation" tabindex="0" onclick="recordHotkey(this)" onkeydown="captureHotkey(event)">Ctrl+Super</div>
         </div>
         <div class="f-row hotkey-debug" id="hotkey-debug">
-          <label>Status</label>
-          <span id="hk-status">checking...</span>
+          <label>Hotkey Presses</label>
+          <div class="hk-live-box">
+            <span id="hk-live">0</span>
+            <span id="hk-status"></span>
+          </div>
         </div>
         <div class="f-row">
           <label>Push-to-Talk</label>

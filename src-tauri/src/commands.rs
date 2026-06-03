@@ -404,6 +404,7 @@ pub fn setup_hotkey(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let status_str: &str;
     match app.global_shortcut().on_shortcut(shortcut, move |a, _shortcut, event| {
         if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
+            let _ = a.emit("hotkey-pressed", ());
             let app2 = a.clone();
             tauri::async_runtime::spawn(async move {
                 let st = clone_state(&*app2.state::<AppState>());

@@ -347,15 +347,25 @@ function showHotkeyStatus(data) {
   if (!el) return;
   const status = data.status;
   if (status === 'registered') {
-    el.innerHTML = '<span class="hk-ok">✓ Registered (' + (data.hotkey || 'ctrl+super') + ')</span>';
+    el.innerHTML = '✓ <span class="hk-ok">Registered</span>';
   } else if (status === 'failed') {
-    el.innerHTML = '<span class="hk-fail">✗ Registration failed — check terminal logs</span>';
+    el.innerHTML = '✗ <span class="hk-fail">Failed</span>';
   } else {
-    el.textContent = status === 'waiting' ? 'registering...' : (status || 'unknown');
+    el.textContent = status === 'waiting' ? '…' : (status || '');
   }
   const rec = document.getElementById('hk-dictation');
   if (rec && data.hotkey) rec.textContent = data.hotkey;
 }
+
+let pressCount = 0;
+listen('hotkey-pressed', () => {
+  pressCount++;
+  const el = document.getElementById('hk-live');
+  if (!el) return;
+  el.textContent = pressCount;
+  el.classList.add('flash');
+  setTimeout(() => el.classList.remove('flash'), 200);
+});
 
 async function toggleRecord() {
   try {
