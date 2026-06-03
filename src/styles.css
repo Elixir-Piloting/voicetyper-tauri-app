@@ -452,3 +452,36 @@ h2 {
   gap: 8px;
   margin-top: 8px;
 }
+
+/* Recording status */
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  font-size: 13px;
+  color: var(--text2);
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text3);
+  flex-shrink: 0;
+}
+
+.status-dot.recording {
+  background: var(--accent);
+  animation: pulse 1s infinite;
+}
+
+.status-dot.processing {
+  background: #f90;
+  animation: pulse 0.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}

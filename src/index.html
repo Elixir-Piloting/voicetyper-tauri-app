@@ -67,6 +67,14 @@
           <input id="inp-trigger" type="text" placeholder="hey voicetyper">
         </div>
         <p class="hint">Say the trigger phrase followed by a command (e.g. "hey voicetyper make this shorter")</p>
+        <div class="status-row" id="recording-status" style="display:none">
+          <div class="status-dot" id="status-dot"></div>
+          <span id="status-text">Idle</span>
+        </div>
+        <div class="f-row" style="margin-top:8px">
+          <label></label>
+          <button class="btn primary" id="btn-record" onclick="toggleRecord()">Start Recording</button>
+        </div>
       </div>
 
       <!-- API Keys Tab -->

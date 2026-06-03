@@ -249,16 +249,6 @@ function closeSettings() {
 let lastRaw = '';
 let lastCleaned = '';
 
-listen('transcription-result', (event) => {
-  const data = event.payload;
-  lastRaw = data.raw || '';
-  lastCleaned = data.cleaned || '';
-  const rawEl = document.getElementById('result-raw');
-  const cleanedEl = document.getElementById('result-cleaned');
-  if (rawEl) rawEl.textContent = lastRaw || '(empty)';
-  if (cleanedEl) cleanedEl.textContent = lastCleaned || '(empty)';
-});
-
 async function copyResult(type) {
   const text = type === 'raw' ? lastRaw : lastCleaned;
   if (!text) return;
@@ -306,6 +296,51 @@ window.addRep = addRep;
 window.copyResult = copyResult;
 window.pasteResult = pasteResult;
 window.retryCleanup = retryCleanup;
+window.toggleRecord = toggleRecord;
 
 // Init
+listen('transcription-result', (event) => {
+  const data = event.payload;
+  lastRaw = data.raw || '';
+  lastCleaned = data.cleaned || '';
+  const rawEl = document.getElementById('result-raw');
+  const cleanedEl = document.getElementById('result-cleaned');
+  if (rawEl) rawEl.textContent = lastRaw || '(empty)';
+  if (cleanedEl) cleanedEl.textContent = lastCleaned || '(empty)';
+});
+
+listen('recording-status', (event) => {
+  const data = event.payload;
+  const el = document.getElementById('recording-status');
+  const dot = document.getElementById('status-dot');
+  const text = document.getElementById('status-text');
+  const btn = document.getElementById('btn-record');
+  if (!el || !dot || !text || !btn) return;
+  if (data.recording) {
+    el.style.display = 'flex';
+    dot.className = 'status-dot recording';
+    text.textContent = 'Recording...';
+    btn.textContent = 'Stop Recording';
+  } else if (data.processing) {
+    el.style.display = 'flex';
+    dot.className = 'status-dot processing';
+    text.textContent = 'Processing...';
+    btn.textContent = 'Recording...';
+    btn.disabled = true;
+  } else {
+    el.style.display = 'none';
+    btn.textContent = 'Start Recording';
+    btn.disabled = false;
+  }
+});
+
+async function toggleRecord() {
+  try {
+    await invoke('toggle_recording');
+  } catch (e) {
+    console.error('toggle:', e);
+  }
+}
+
+// Init state check
 document.addEventListener('DOMContentLoaded', loadConfig);

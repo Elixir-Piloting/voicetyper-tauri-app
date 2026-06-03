@@ -219,15 +219,23 @@ pub fn toggle_recording(app: AppHandle, state: State<'_, AppState>) -> Result<()
 async fn start_recording_inner(app: AppHandle, st: AppState) -> Result<String, String> {
     let mut rec_lock = st.recorder.lock();
     if rec_lock.is_some() {
+        log::warn!("start_recording: already recording");
         return Err("already recording".to_string());
     }
 
     let mut recorder = Recorder::new(16000);
-    recorder.start()?;
+    recorder.start().map_err(|e| {
+        log::error!("recorder.start failed: {}", e);
+        e
+    })?;
 
     *st.is_recording.lock() = true;
     *rec_lock = Some(recorder);
     drop(rec_lock);
+
+    log::info!("recording started");
+
+    let _ = app.emit("recording-status", serde_json::json!({"recording": true}));
 
     app.emit(
         "island-state",
@@ -241,10 +249,20 @@ async fn start_recording_inner(app: AppHandle, st: AppState) -> Result<String, S
 async fn stop_recording_inner(app: AppHandle, st: AppState) -> Result<String, String> {
     let (audio, config) = {
         let mut rec_lock = st.recorder.lock();
-        let recorder = rec_lock.as_mut().ok_or_else(|| "not recording".to_string())?;
+        let recorder = match rec_lock.as_mut() {
+            Some(r) => r,
+            None => {
+                log::error!("stop_recording: not recording");
+                *st.is_recording.lock() = false;
+                *st.is_processing.lock() = false;
+                return Err("not recording".to_string());
+            }
+        };
 
         *st.is_recording.lock() = false;
         *st.is_processing.lock() = true;
+
+        let _ = app.emit("recording-status", serde_json::json!({"recording": false, "processing": true}));
 
         app.emit(
             "island-state",
@@ -252,15 +270,22 @@ async fn stop_recording_inner(app: AppHandle, st: AppState) -> Result<String, St
         )
         .map_err(|e| format!("emit: {}", e))?;
 
-        let audio = recorder.stop().ok_or_else(|| "no audio captured".to_string())?;
+        let audio = recorder.stop().ok_or_else(|| {
+            log::error!("recorder.stop returned None");
+            "no audio captured".to_string()
+        })?;
         let config = st.config.lock().clone();
         *rec_lock = None;
         drop(rec_lock);
         (audio, config)
     };
 
+    log::info!("captured {} samples ({:.1}s)", audio.len(), audio.len() as f64 / 16000.0);
+
     if audio.len() < 1600 {
+        log::info!("audio too short, skipping");
         *st.is_processing.lock() = false;
+        let _ = app.emit("recording-status", serde_json::json!({"recording": false, "processing": false}));
         app.emit(
             "island-state",
             serde_json::json!({"type": "state", "state": "idle"}),
@@ -270,19 +295,33 @@ async fn stop_recording_inner(app: AppHandle, st: AppState) -> Result<String, St
     }
 
     let raw = if config.use_groq {
-        crate::transcribe::transcribe_with_groq(&audio, &config).await?
+        log::info!("transcribing via Groq...");
+        crate::transcribe::transcribe_with_groq(&audio, &config).await.map_err(|e| {
+            log::error!("groq transcription failed: {}", e);
+            e
+        })?
     } else {
+        log::info!("transcribing via local Whisper...");
         let whisper = st.whisper.lock();
-        let h = whisper.as_ref().ok_or_else(|| "Whisper not loaded".to_string())?;
+        let h = whisper.as_ref().ok_or_else(|| {
+            log::error!("Whisper not loaded");
+            "Whisper not loaded".to_string()
+        })?;
         let result = crate::transcribe::transcribe_local(&audio, h, &config.language);
         drop(whisper);
-        result?
+        result.map_err(|e| {
+            log::error!("local transcription failed: {}", e);
+            e
+        })?
     };
 
+    log::info!("transcribed: {:.120}", raw);
     let raw = config.replace_text(&raw);
 
     if raw.is_empty() {
+        log::info!("transcription empty after replacements");
         *st.is_processing.lock() = false;
+        let _ = app.emit("recording-status", serde_json::json!({"recording": false, "processing": false}));
         app.emit(
             "island-state",
             serde_json::json!({"type": "state", "state": "idle"}),
@@ -294,14 +333,27 @@ async fn stop_recording_inner(app: AppHandle, st: AppState) -> Result<String, St
     let env = environment::detect_environment();
     let (window_class, window_title) = environment::get_active_window(&env);
 
-    let cleaned =
-        crate::cleanup::cleanup_text(&raw, &window_class, &window_title, &config).await?;
+    log::info!("cleaning up text via {}...", config.cleanup_engine);
+    let cleaned = crate::cleanup::cleanup_text(&raw, &window_class, &window_title, &config).await.map_err(|e| {
+        log::error!("cleanup failed: {}", e);
+        e
+    })?;
     let cleaned = config.replace_text(&cleaned);
 
-    crate::paste::copy_to_clipboard(&env, &cleaned)?;
-    crate::paste::simulate_paste(&env, &window_class)?;
+    log::info!("copying to clipboard...");
+    crate::paste::copy_to_clipboard(&env, &cleaned).map_err(|e| {
+        log::error!("clipboard copy failed: {}", e);
+        e
+    })?;
+
+    log::info!("pasting...");
+    crate::paste::simulate_paste(&env, &window_class).map_err(|e| {
+        log::error!("paste failed: {}", e);
+        e
+    })?;
 
     *st.is_processing.lock() = false;
+    let _ = app.emit("recording-status", serde_json::json!({"recording": false, "processing": false}));
 
     app.emit(
         "island-state",
@@ -338,19 +390,26 @@ pub fn setup_hotkey(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
     let shortcut = Shortcut::new(Some(modifiers), code);
 
-    let _ = app.global_shortcut().on_shortcut(shortcut, move |a, _shortcut, event| {
+    match app.global_shortcut().on_shortcut(shortcut, move |a, _shortcut, event| {
         if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
             let app2 = a.clone();
             tauri::async_runtime::spawn(async move {
                 let st = clone_state(&*app2.state::<AppState>());
                 if *st.is_recording.lock() || *st.is_processing.lock() {
-                    let _ = stop_recording_inner(app2.clone(), st).await;
+                    if let Err(e) = stop_recording_inner(app2.clone(), st).await {
+                        log::error!("hotkey stop: {}", e);
+                    }
                 } else {
-                    let _ = start_recording_inner(app2.clone(), st).await;
+                    if let Err(e) = start_recording_inner(app2.clone(), st).await {
+                        log::error!("hotkey start: {}", e);
+                    }
                 }
             });
         }
-    });
+    }) {
+        Ok(_) => log::info!("hotkey registered: {} (mods={:?}, code={:?})", hotkey_str, modifiers, code),
+        Err(e) => log::error!("hotkey registration failed: {}", e),
+    }
 
     Ok(())
 }
@@ -493,14 +552,15 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
                 ..
             } = event
             {
-                let cur_app = tray.app_handle();
-                if let Some(win) = cur_app.get_webview_window("dynamic-island") {
-                    if win.is_visible().unwrap_or(false) {
-                        let _ = win.hide();
+                let cur_app = tray.app_handle().clone();
+                let st: AppState = clone_state(&*cur_app.state::<AppState>());
+                tauri::async_runtime::spawn(async move {
+                    if *st.is_recording.lock() || *st.is_processing.lock() {
+                        let _ = stop_recording_inner(cur_app, st).await;
                     } else {
-                        let _ = win.show();
+                        let _ = start_recording_inner(cur_app, st).await;
                     }
-                }
+                });
             }
         })
         .build(app)?;
