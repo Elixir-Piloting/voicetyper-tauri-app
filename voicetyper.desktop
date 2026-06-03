@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=VoiceTyper
+Comment=Voice dictation with AI cleanup for Linux
+Exec=voicetyper
+Icon=voicetyper
+Terminal=false
+Type=Application
+Categories=Utility;Audio;TextTools;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true

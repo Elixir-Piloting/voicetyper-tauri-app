@@ -1,0 +1,62 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicoverbruggen/tauri-v2-schema/main/schema.json",
+  "productName": "VoiceTyper",
+  "version": "0.1.0",
+  "identifier": "com.voicetyper.app",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "VoiceTyper Settings",
+        "label": "settings",
+        "url": "index.html",
+        "width": 900,
+        "height": 680,
+        "center": true,
+        "resizable": true,
+        "maximized": true,
+        "visible": false,
+        "decorations": true
+      },
+      {
+        "title": "VoiceTyper",
+        "label": "dynamic-island",
+        "url": "dynamic-island.html",
+        "width": 300,
+        "height": 48,
+        "center": false,
+        "x": null,
+        "y": null,
+        "resizable": false,
+        "visible": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "transparent": true,
+        "shadow": false,
+        "focusable": false
+      }
+    ],
+    "trayIcon": {
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": true
+    },
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png"
+    ]
+  }
+}

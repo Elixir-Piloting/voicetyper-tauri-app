@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoiceTyper</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{
+  width:100%;height:100%;
+  overflow:hidden;
+  background:transparent;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  user-select:none;
+  -webkit-user-select:none;
+}
+#island{
+  position:relative;
+  width:100%;height:100%;
+  display:flex;align-items:center;
+  justify-content:center;
+  transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+#island.idle{
+  justify-content:center;
+}
+#island.recording{
+  justify-content:flex-start;
+  padding-left:16px;
+  gap:8px;
+}
+#island-bar{
+  background:rgba(40,40,45,0.85);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-radius:24px;
+  transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  display:flex;align-items:center;
+  position:relative;
+  overflow:hidden;
+}
+#island-bar.idle{
+  width:80px;height:6px;
+  border-radius:3px;
+  background:rgba(80,80,85,0.5);
+}
+#island-bar.recording{
+  width:280px;height:40px;
+  padding:0 12px 0 8px;
+}
+#island-bar.idle .inner,
+#island-bar.idle .wave-container{display:none}
+.inner{
+  display:flex;align-items:center;gap:8px;
+  width:100%;height:100%;
+}
+.dot{
+  width:10px;height:10px;border-radius:50%;
+  background:#ff3b30;flex-shrink:0;
+  box-shadow:0 0 8px rgba(255,59,48,0.5);
+  animation:pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse{
+  0%,100%{opacity:1;transform:scale(1)}
+  50%{opacity:0.6;transform:scale(0.85)}
+}
+.wave-container{
+  flex:1;height:28px;
+  display:flex;align-items:center;
+  gap:2px;
+}
+.wave-bar{
+  flex:1;height:4px;
+  background:rgba(255,255,255,0.6);
+  border-radius:2px;
+  transition:height 0.08s ease;
+}
+.processing .dot{animation:processing 0.8s ease-in-out infinite}
+@keyframes processing{
+  0%,100%{opacity:0.4;transform:scale(0.7)}
+  50%{opacity:1;transform:scale(1.1)}
+}
+#lang-label{
+  position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  font-size:10px;font-weight:600;color:rgba(255,255,255,0.35);
+  letter-spacing:0.5px;
+}
+</style>
+</head>
+<body>
+<div id="island" class="idle">
+  <div id="island-bar" class="idle">
+    <div class="inner">
+      <div class="dot"></div>
+      <div class="wave-container" id="wave-container"></div>
+    </div>
+  </div>
+  <span id="lang-label">EN</span>
+</div>
+<script>
+const BAR_COUNT = 20;
+const waveEl = document.getElementById('wave-container');
+const islandEl = document.getElementById('island');
+const barEl = document.getElementById('island-bar');
+const langLabel = document.getElementById('lang-label');
+
+for (let i = 0; i < BAR_COUNT; i++) {
+  const bar = document.createElement('div');
+  bar.className = 'wave-bar';
+  waveEl.appendChild(bar);
+}
+
+const bars = waveEl.querySelectorAll('.wave-bar');
+
+let amplitudes = new Array(BAR_COUNT).fill(0);
+
+function animate() {
+  for (let i = 0; i < BAR_COUNT; i++) {
+    const h = Math.max(3, amplitudes[i] * 28);
+    bars[i].style.height = h + 'px';
+  }
+  requestAnimationFrame(animate);
+}
+animate();
+
+window.addEventListener('message', (e) => {
+  const data = e.data;
+  if (data.type === 'waveform') {
+    const vals = data.amplitudes;
+    for (let i = 0; i < BAR_COUNT && i < vals.length; i++) {
+      amplitudes[i] = amplitudes[i] * 0.3 + vals[i] * 0.7;
+    }
+  } else if (data.type === 'state') {
+    if (data.state === 'recording') {
+      islandEl.className = 'recording';
+      barEl.className = 'recording';
+    } else if (data.state === 'processing') {
+      islandEl.className = 'recording processing';
+      barEl.className = 'recording';
+    } else {
+      islandEl.className = 'idle';
+      barEl.className = 'idle';
+      amplitudes.fill(0);
+    }
+  } else if (data.type === 'language') {
+    langLabel.textContent = data.lang.toUpperCase();
+  }
+});
+</script>
+</body>
+</html>

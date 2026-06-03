@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoiceTyper Settings</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">VT</div>
+      <span class="sidebar-title">VoiceTyper</span>
+    </div>
+    <div class="sidebar-tabs" id="sidebar-tabs" role="tablist">
+      <div class="stab active" data-tab="hotkey" onclick="switchTab('hotkey')" tabindex="0" role="tab" onkeydown="if(event.key==='Enter'||event.key===' ')switchTab('hotkey')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/></svg>
+        <span>Hotkey</span>
+      </div>
+      <div class="stab" data-tab="keys" onclick="switchTab('keys')" tabindex="0" role="tab" onkeydown="if(event.key==='Enter'||event.key===' ')switchTab('keys')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span>API Keys</span>
+      </div>
+      <div class="stab" data-tab="transcription" onclick="switchTab('transcription')" tabindex="0" role="tab" onkeydown="if(event.key==='Enter'||event.key===' ')switchTab('transcription')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        <span>Transcription</span>
+      </div>
+      <div class="stab" data-tab="cleanup" onclick="switchTab('cleanup')" tabindex="0" role="tab" onkeydown="if(event.key==='Enter'||event.key===' ')switchTab('cleanup')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>
+        <span>Cleanup</span>
+      </div>
+      <div class="stab" data-tab="modes" onclick="switchTab('modes')" tabindex="0" role="tab" onkeydown="if(event.key==='Enter'||event.key===' ')switchTab('modes')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+        <span>Modes</span>
+      </div>
+      <div class="stab" data-tab="replacements" onclick="switchTab('replacements')" tabindex="0" role="tab" onkeydown="if(event.key==='Enter'||event.key===' ')switchTab('replacements')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+        <span>Replacements</span>
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <span class="version">v0.1.0</span>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="content">
+      <!-- Hotkey Tab -->
+      <div class="tab-pane active" id="pane-hotkey">
+        <h2>Hotkey</h2>
+        <p class="pane-desc">Configure keyboard shortcuts for dictation control.</p>
+        <div class="f-row">
+          <label>Dictation Hotkey</label>
+          <div class="hotkey-recorder" id="hk-dictation" tabindex="0" onclick="recordHotkey(this)" onkeydown="captureHotkey(event)">Ctrl+Super</div>
+        </div>
+        <div class="f-row">
+          <label>Push-to-Talk</label>
+          <label class="tgl"><input id="chk-ptt" type="checkbox"><span class="sl"></span></label>
+        </div>
+        <div class="f-row">
+          <label>Trigger Phrase</label>
+          <input id="inp-trigger" type="text" placeholder="hey voicetyper">
+        </div>
+        <p class="hint">Say the trigger phrase followed by a command (e.g. "hey voicetyper make this shorter")</p>
+      </div>
+
+      <!-- API Keys Tab -->
+      <div class="tab-pane" id="pane-keys">
+        <h2>API Keys</h2>
+        <p class="pane-desc">API keys for cloud services. Stored locally in your config file.</p>
+        <div class="f-row">
+          <label>Groq API Key</label>
+          <div class="key-input-group">
+            <input id="inp-groqkey" type="password" placeholder="gsk_...">
+            <button class="btn test-btn" onclick="testGroqKey()" id="test-groq">Test</button>
+            <span class="test-result" id="result-groq"></span>
+          </div>
+        </div>
+        <div class="f-row">
+          <label>OpenRouter API Key</label>
+          <div class="key-input-group">
+            <input id="inp-orkey" type="password" placeholder="sk-or-...">
+            <button class="btn test-btn" onclick="testOpenRouterKey()" id="test-or">Test</button>
+            <span class="test-result" id="result-or"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transcription Tab -->
+      <div class="tab-pane" id="pane-transcription">
+        <h2>Transcription</h2>
+        <p class="pane-desc">Speech-to-text engine configuration.</p>
+        <div class="f-row">
+          <label>Engine</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="stt-engine" value="groq" checked> Groq Cloud</label>
+            <label class="radio-label"><input type="radio" name="stt-engine" value="local"> Local Whisper</label>
+          </div>
+        </div>
+        <div class="f-row" id="row-whisper-model" style="display:none">
+          <label>Model</label>
+          <select id="sel-model">
+            <option value="tiny">tiny</option>
+            <option value="base">base</option>
+            <option value="small" selected>small</option>
+            <option value="medium">medium</option>
+            <option value="large-v3">large-v3</option>
+          </select>
+        </div>
+        <div class="f-row" id="row-compute" style="display:none">
+          <label>Compute Type</label>
+          <select id="sel-ctype">
+            <option value="int8">int8</option>
+            <option value="float32">float32</option>
+            <option value="int8_float16">int8+float16</option>
+          </select>
+        </div>
+        <div class="f-row" id="row-download" style="display:none">
+          <label></label>
+          <div>
+            <button class="btn" onclick="downloadModel()" id="btn-download">Download Model</button>
+            <span id="dl-status" class="hint" style="margin-left:8px"></span>
+          </div>
+        </div>
+        <div class="f-row">
+          <label>Language</label>
+          <select id="sel-lang" class="lang-select">
+            <option value="en">English</option>
+            <option value="af">Afrikaans</option>
+            <option value="ar">Arabic</option>
+            <option value="hy">Armenian</option>
+            <option value="az">Azerbaijani</option>
+            <option value="be">Belarusian</option>
+            <option value="bs">Bosnian</option>
+            <option value="bg">Bulgarian</option>
+            <option value="ca">Catalan</option>
+            <option value="zh">Chinese</option>
+            <option value="hr">Croatian</option>
+            <option value="cs">Czech</option>
+            <option value="da">Danish</option>
+            <option value="nl">Dutch</option>
+            <option value="et">Estonian</option>
+            <option value="fi">Finnish</option>
+            <option value="fr">French</option>
+            <option value="gl">Galician</option>
+            <option value="de">German</option>
+            <option value="el">Greek</option>
+            <option value="he">Hebrew</option>
+            <option value="hi">Hindi</option>
+            <option value="hu">Hungarian</option>
+            <option value="is">Icelandic</option>
+            <option value="id">Indonesian</option>
+            <option value="it">Italian</option>
+            <option value="ja">Japanese</option>
+            <option value="kk">Kazakh</option>
+            <option value="ko">Korean</option>
+            <option value="lv">Latvian</option>
+            <option value="lt">Lithuanian</option>
+            <option value="mk">Macedonian</option>
+            <option value="ms">Malay</option>
+            <option value="mi">Maori</option>
+            <option value="mr">Marathi</option>
+            <option value="mn">Mongolian</option>
+            <option value="ne">Nepali</option>
+            <option value="no">Norwegian</option>
+            <option value="fa">Persian</option>
+            <option value="pl">Polish</option>
+            <option value="pt">Portuguese</option>
+            <option value="ro">Romanian</option>
+            <option value="ru">Russian</option>
+            <option value="sr">Serbian</option>
+            <option value="sk">Slovak</option>
+            <option value="sl">Slovenian</option>
+            <option value="es">Spanish</option>
+            <option value="sw">Swahili</option>
+            <option value="sv">Swedish</option>
+            <option value="tl">Tagalog</option>
+            <option value="ta">Tamil</option>
+            <option value="th">Thai</option>
+            <option value="tr">Turkish</option>
+            <option value="uk">Ukrainian</option>
+            <option value="ur">Urdu</option>
+            <option value="vi">Vietnamese</option>
+            <option value="cy">Welsh</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Cleanup Tab -->
+      <div class="tab-pane" id="pane-cleanup">
+        <h2>Cleanup</h2>
+        <p class="pane-desc">AI text cleanup engine. Priority: Groq → OpenRouter → Ollama (local).</p>
+        <div class="f-row">
+          <label>Engine</label>
+          <select id="sel-cl-engine">
+            <option value="groq">Groq</option>
+            <option value="openrouter">OpenRouter</option>
+            <option value="ollama">Ollama (local)</option>
+          </select>
+        </div>
+        <div class="f-row">
+          <label>Groq Model</label>
+          <input id="inp-groqcl-model" type="text" placeholder="meta-llama/llama-4-scout-17b-16e-instruct">
+        </div>
+        <div class="f-row">
+          <label>OpenRouter Model</label>
+          <input id="inp-ormodel" type="text" placeholder="anthropic/claude-3.5-haiku">
+        </div>
+        <div class="f-row">
+          <label>Ollama URL</label>
+          <input id="inp-url" type="text" placeholder="http://localhost:11434">
+        </div>
+        <div class="f-row">
+          <label>Ollama Model</label>
+          <input id="inp-ollama" type="text" placeholder="qwen2.5:7b-instruct">
+        </div>
+      </div>
+
+      <!-- Modes Tab -->
+      <div class="tab-pane" id="pane-modes">
+        <h2>Writing Modes</h2>
+        <p class="pane-desc">Auto-detect context based on active window. Add window class/title regex patterns.</p>
+        <div class="f-row">
+          <label>Auto-detect</label>
+          <label class="tgl"><input id="chk-auto" type="checkbox"><span class="sl"></span></label>
+        </div>
+        <div class="sub-tab" id="mode-tabs"></div>
+        <div id="mode-editor" class="mode-editor"></div>
+        <div class="f-row" style="margin-top:8px">
+          <label></label>
+          <button class="btn" onclick="addMode()">+ Add Mode</button>
+        </div>
+      </div>
+
+      <!-- Replacements Tab -->
+      <div class="tab-pane" id="pane-replacements">
+        <h2>Replacements</h2>
+        <p class="pane-desc">Find/replace text pairs applied to all transcriptions.</p>
+        <div id="replist"></div>
+        <div class="f-row" style="margin-top:8px">
+          <label></label>
+          <button class="btn" onclick="addRep()">+ Add Replacement</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="footer">
+      <button class="btn primary" onclick="saveSettings()">Save</button>
+      <span id="save-msg"></span>
+    </div>
+  </div>
+</div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
