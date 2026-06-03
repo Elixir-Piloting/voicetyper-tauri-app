@@ -63,9 +63,11 @@ function switchTab(name) {
 
 // Hotkey recorder
 let recordingHotkey = false;
+let hotkeyEl = null;
 function recordHotkey(el) {
   if (recordingHotkey) return;
   recordingHotkey = true;
+  hotkeyEl = el;
   el.classList.add('recording');
   el.textContent = 'press combo...';
   el.focus();
@@ -86,8 +88,11 @@ function captureHotkey(e) {
   }
   if (parts.length < 2) return;
   recordingHotkey = false;
-  el.classList.remove('recording');
-  el.textContent = parts.join('+');
+  if (hotkeyEl) {
+    hotkeyEl.classList.remove('recording');
+    hotkeyEl.textContent = parts.join('+');
+    hotkeyEl = null;
+  }
 }
 
 document.addEventListener('keydown', (e) => {

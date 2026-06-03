@@ -183,6 +183,13 @@ h2 {
   font-size: 13px;
   width: 240px;
   transition: border-color 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.f-row select option {
+  background: #1c1c1c;
+  color: #e0e0e0;
 }
 
 .f-row input:focus, .f-row select:focus {
