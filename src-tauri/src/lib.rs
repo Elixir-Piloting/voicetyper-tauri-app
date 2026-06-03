@@ -20,6 +20,7 @@ pub struct AppState {
     pub is_recording: Arc<Mutex<bool>>,
     pub is_processing: Arc<Mutex<bool>>,
     pub whisper: Arc<Mutex<Option<WhisperHandle>>>,
+    pub hotkey_status: Arc<Mutex<String>>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -32,6 +33,7 @@ pub fn run() {
         is_recording: Arc::new(Mutex::new(false)),
         is_processing: Arc::new(Mutex::new(false)),
         whisper: Arc::new(Mutex::new(None)),
+        hotkey_status: Arc::new(Mutex::new("waiting".to_string())),
     };
 
     tauri::Builder::default()
@@ -75,6 +77,7 @@ pub fn run() {
             commands::download_whisper_model,
             commands::get_whisper_models,
             commands::toggle_recording,
+            commands::get_hotkey_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running voicetyper");

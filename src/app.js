@@ -42,6 +42,10 @@ function applyConfig() {
   document.getElementById('chk-auto').checked = config.writing_mode_auto !== false;
   buildModeTabs(modes, config.writing_mode || 'General');
   (config.replacements || []).forEach(r => addRep(r[0], r[1]));
+  // Poll hotkey status
+  invoke('get_hotkey_status').then(data => {
+    showHotkeyStatus(data);
+  }).catch(() => {});
 }
 
 function toggleEngineFields(engine) {
@@ -335,21 +339,23 @@ listen('recording-status', (event) => {
 });
 
 listen('hotkey-status', (event) => {
-  const data = event.payload;
+  showHotkeyStatus(event.payload);
+});
+
+function showHotkeyStatus(data) {
   const el = document.getElementById('hk-status');
   if (!el) return;
   const status = data.status;
   if (status === 'registered') {
-    el.innerHTML = '<span class="hk-ok">✓ Registered (' + data.hotkey + ')</span>';
+    el.innerHTML = '<span class="hk-ok">✓ Registered (' + (data.hotkey || 'ctrl+super') + ')</span>';
   } else if (status === 'failed') {
     el.innerHTML = '<span class="hk-fail">✗ Registration failed — check terminal logs</span>';
   } else {
-    el.textContent = 'unknown';
+    el.textContent = status === 'waiting' ? 'registering...' : (status || 'unknown');
   }
-  // Also update the hotkey recorder display
   const rec = document.getElementById('hk-dictation');
   if (rec && data.hotkey) rec.textContent = data.hotkey;
-});
+}
 
 async function toggleRecord() {
   try {

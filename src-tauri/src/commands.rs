@@ -12,6 +12,7 @@ fn clone_state(state: &AppState) -> AppState {
         is_recording: state.is_recording.clone(),
         is_processing: state.is_processing.clone(),
         whisper: state.whisper.clone(),
+        hotkey_status: state.hotkey_status.clone(),
     }
 }
 
@@ -197,6 +198,16 @@ pub fn get_whisper_models() -> Vec<serde_json::Value> {
             "downloaded": downloaded,
         })
     }).collect()
+}
+
+#[tauri::command]
+pub fn get_hotkey_status(state: State<'_, AppState>) -> serde_json::Value {
+    let status = state.hotkey_status.lock().clone();
+    let cfg = state.config.lock().clone();
+    serde_json::json!({
+        "hotkey": cfg.hotkey,
+        "status": status,
+    })
 }
 
 #[tauri::command]
@@ -390,7 +401,8 @@ pub fn setup_hotkey(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
 
     let shortcut = Shortcut::new(Some(modifiers), code);
 
-    let hotkey_status = match app.global_shortcut().on_shortcut(shortcut, move |a, _shortcut, event| {
+    let status_str: &str;
+    match app.global_shortcut().on_shortcut(shortcut, move |a, _shortcut, event| {
         if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
             let app2 = a.clone();
             tauri::async_runtime::spawn(async move {
@@ -409,19 +421,22 @@ pub fn setup_hotkey(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     }) {
         Ok(_) => {
             log::info!("hotkey registered: {} (mods={:?}, code={:?})", hotkey_str, modifiers, code);
-            "registered"
+            status_str = "registered";
         }
         Err(e) => {
             log::error!("hotkey registration failed: {}", e);
-            "failed"
+            status_str = "failed";
         }
-    };
+    }
+
+    {
+        let st: State<'_, AppState> = app.state();
+        *st.hotkey_status.lock() = status_str.to_string();
+    }
 
     let _ = app.emit("hotkey-status", serde_json::json!({
-        "hotkey": hotkey_str,
-        "status": hotkey_status,
-        "modifiers": format!("{:?}", modifiers),
-        "code": format!("{:?}", code),
+        "hotkey": hotkey_str.clone(),
+        "status": status_str,
     }));
 
     Ok(())
