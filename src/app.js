@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { listen } from '@tauri-apps/api/event';
 
 let config = {};
 let modes = {};
@@ -244,6 +245,52 @@ function closeSettings() {
   getCurrentWindow().close();
 }
 
+// Transcription results
+let lastRaw = '';
+let lastCleaned = '';
+
+listen('transcription-result', (event) => {
+  const data = event.payload;
+  lastRaw = data.raw || '';
+  lastCleaned = data.cleaned || '';
+  const rawEl = document.getElementById('result-raw');
+  const cleanedEl = document.getElementById('result-cleaned');
+  if (rawEl) rawEl.textContent = lastRaw || '(empty)';
+  if (cleanedEl) cleanedEl.textContent = lastCleaned || '(empty)';
+});
+
+async function copyResult(type) {
+  const text = type === 'raw' ? lastRaw : lastCleaned;
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (_) {
+    // fallback
+  }
+}
+
+async function pasteResult() {
+  if (!lastCleaned) return;
+  try {
+    await invoke('paste_text', { text: lastCleaned });
+  } catch (e) {
+    console.error('paste:', e);
+  }
+}
+
+async function retryCleanup() {
+  if (!lastRaw) return;
+  const el = document.getElementById('result-cleaned');
+  el.textContent = '…';
+  try {
+    const cleaned = await invoke('retry_cleanup', { text: lastRaw });
+    lastCleaned = cleaned;
+    el.textContent = cleaned || '(empty)';
+  } catch (e) {
+    el.textContent = 'Error: ' + e;
+  }
+}
+
 // Expose functions to window for inline onclick handlers
 window.switchTab = switchTab;
 window.recordHotkey = recordHotkey;
@@ -256,6 +303,9 @@ window.closeSettings = closeSettings;
 window.addMode = addMode;
 window.switchModeTab = switchModeTab;
 window.addRep = addRep;
+window.copyResult = copyResult;
+window.pasteResult = pasteResult;
+window.retryCleanup = retryCleanup;
 
 // Init
 document.addEventListener('DOMContentLoaded', loadConfig);

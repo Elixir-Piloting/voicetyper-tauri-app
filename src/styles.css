@@ -412,3 +412,43 @@ h2 {
   color: #4caf50;
   margin-left: 8px;
 }
+
+/* Results tab */
+.result-section {
+  margin-bottom: 16px;
+}
+
+.result-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.result-box {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+  min-height: 60px;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.result-box::-webkit-scrollbar { width: 6px; }
+.result-box::-webkit-scrollbar-track { background: transparent; }
+.result-box::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+.result-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}

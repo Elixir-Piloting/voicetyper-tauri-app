@@ -155,6 +155,9 @@ pub async fn stop_recording(app: AppHandle, state: State<'_, AppState>) -> Resul
     .map_err(|e| format!("emit: {}", e))?;
 
     log::info!("✓ pasted: {:.120}", cleaned);
+
+    emit_transcription_result(&app, &raw, &cleaned);
+
     Ok(cleaned)
 }
 
@@ -199,15 +202,14 @@ pub fn get_whisper_models() -> Vec<serde_json::Value> {
 #[tauri::command]
 pub fn toggle_recording(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
     let state_clone = clone_state(&state);
-    if *state_clone.is_recording.lock() {
+    if *state_clone.is_recording.lock() || *state_clone.is_processing.lock() {
         tauri::async_runtime::spawn(async move {
-            let app_clone = app.clone();
-            // We can't use State in spawned tasks directly, so we manage state differently
-            let _ = start_recording_inner(app_clone, state_clone).await;
+            let _ = stop_recording_inner(app.clone(), state_clone).await;
         });
     } else {
         tauri::async_runtime::spawn(async move {
-            let _ = stop_recording_inner(app.clone(), state_clone).await;
+            let app_clone = app.clone();
+            let _ = start_recording_inner(app_clone, state_clone).await;
         });
     }
     Ok(())
@@ -308,7 +310,18 @@ async fn stop_recording_inner(app: AppHandle, st: AppState) -> Result<String, St
     .map_err(|e| format!("emit: {}", e))?;
 
     log::info!("✓ pasted: {:.120}", cleaned);
+
+    emit_transcription_result(&app, &raw, &cleaned);
+
     Ok(cleaned)
+}
+
+fn emit_transcription_result(app: &AppHandle, raw: &str, cleaned: &str) {
+    let _ = app.emit("transcription-result", serde_json::json!({
+        "type": "transcription-result",
+        "raw": raw,
+        "cleaned": cleaned,
+    }));
 }
 
 pub fn setup_hotkey(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
@@ -347,22 +360,60 @@ fn parse_hotkey(s: &str) -> Result<(tauri_plugin_global_shortcut::Modifiers, tau
 
     let parts: Vec<&str> = s.split('+').collect();
     let mut modifiers = Modifiers::empty();
-    let mut key = Code::ControlLeft;
+    let mut key = Code::Space;
 
     for part in &parts {
-        match *part {
+        let p = part.to_lowercase();
+        match p.as_str() {
             "ctrl" | "control" => modifiers |= Modifiers::CONTROL,
             "super" | "win" | "cmd" | "meta" => modifiers |= Modifiers::SUPER,
             "alt" => modifiers |= Modifiers::ALT,
             "shift" => modifiers |= Modifiers::SHIFT,
             _ => {
-                key = match *part {
+                key = match p.as_str() {
                     "space" => Code::Space,
                     "enter" => Code::Enter,
                     "escape" => Code::Escape,
                     "tab" => Code::Tab,
+                    "a" => Code::KeyA,
+                    "b" => Code::KeyB,
+                    "c" => Code::KeyC,
+                    "d" => Code::KeyD,
+                    "e" => Code::KeyE,
+                    "f" => Code::KeyF,
+                    "g" => Code::KeyG,
+                    "h" => Code::KeyH,
+                    "i" => Code::KeyI,
+                    "j" => Code::KeyJ,
+                    "k" => Code::KeyK,
+                    "l" => Code::KeyL,
+                    "m" => Code::KeyM,
+                    "n" => Code::KeyN,
+                    "o" => Code::KeyO,
+                    "p" => Code::KeyP,
+                    "q" => Code::KeyQ,
+                    "r" => Code::KeyR,
+                    "s" => Code::KeyS,
+                    "t" => Code::KeyT,
+                    "u" => Code::KeyU,
                     "v" => Code::KeyV,
-                    _ => Code::ControlLeft,
+                    "w" => Code::KeyW,
+                    "x" => Code::KeyX,
+                    "y" => Code::KeyY,
+                    "z" => Code::KeyZ,
+                    "f1" => Code::F1,
+                    "f2" => Code::F2,
+                    "f3" => Code::F3,
+                    "f4" => Code::F4,
+                    "f5" => Code::F5,
+                    "f6" => Code::F6,
+                    "f7" => Code::F7,
+                    "f8" => Code::F8,
+                    "f9" => Code::F9,
+                    "f10" => Code::F10,
+                    "f11" => Code::F11,
+                    "f12" => Code::F12,
+                    _ => Code::Space,
                 };
             }
         }
