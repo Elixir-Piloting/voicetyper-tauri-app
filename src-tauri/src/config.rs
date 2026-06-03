@@ -116,7 +116,7 @@ pub fn default_writing_modes() -> HashMap<String, WritingMode> {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            hotkey: "ctrl+super+d".into(),
+            hotkey: "ctrl+super".into(),
             push_to_talk: true,
             trigger_phrase: "hey voicetyper".into(),
             groq_api_key: String::new(),
